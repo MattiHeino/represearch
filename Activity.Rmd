@@ -1,0 +1,144 @@
+---
+title: "Reproducible Markdown"
+author: "Matti Heino"
+date: "Sunday, December 20, 2015"
+output: html_document
+---
+
+# Loading and preprocessing the data
+
+```{r}
+setwd ("C:/Users/matti/Desktop/Reproducible research MOOC")
+act <- read.csv ("activity.csv")
+
+str(act)
+summary(act)
+attach(act)
+```
+
+```{r}
+act.Agg <- aggregate(act$steps, list(time=act$date), mean)
+
+act2 <- aggregate(act$steps, list(time = act$interval), mean, na.rm=T)
+head(act2)
+tail(act2)
+```
+# Total number of steps taken per day?
+
+## histogram:
+
+```{r}
+hist(act.Agg$x)
+```
+
+
+## Mean of steps:
+```{r}
+mean(act.Agg$x, na.rm=T)
+```
+
+## Median of steps:
+
+```{r}
+median(act.Agg$x, na.rm=T)
+
+```
+
+# What is the average daily activity pattern?
+
+```{r}
+plot (act2$x ~ act2$time, type="l")
+```
+
+Activity begins shortly after 5am, and there's a peak around 9am. 
+
+
+##Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?##
+
+```{r}
+act2$time[which(act2$x == max(act2$x))]
+```
+
+# Missing values
+
+## Total number of missing values in the dataset
+
+```{r}
+sum(is.na(act$date))
+sum(is.na(act$steps))
+sum(is.na(act$interval))
+```
+
+Create a new dataset that is equal to the original dataset but with the missing data filled in.
+    
+```{r}
+if(!require(plyr)){install.packages('plyr')} 
+library(plyr)
+
+impute.mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
+act.Imp <- (ddply(act, ~ interval, transform, steps = impute.mean(steps)))
+act.Imp.Agg <- aggregate(act.Imp$steps, list(time=act.Imp$date), mean)
+act.Imp2 <- aggregate(act.Imp$steps, list(time = act.Imp$interval), mean, na.rm=T)
+```
+Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+**histogram:**
+
+```{r}
+hist(act.Imp.Agg$x)
+
+```
+
+
+**Mean of steps:**
+```{r}
+mean(act.Imp.Agg$x)
+
+# difference:
+mean(act.Agg$x, na.rm=T) - mean(act.Imp.Agg$x, na.rm=T)
+```
+
+**Median of steps:**
+
+```{r}
+median(act.Imp.Agg$x)
+
+# difference:
+median(act.Imp.Agg$x, na.rm=T) - median(act.Agg$x, na.rm=T)
+
+```
+
+# What is the average daily activity pattern?
+
+```{r}
+plot (act.Imp2$x ~ act.Imp2$time, type="l")
+```
+
+***Are there differences in activity patterns between weekdays and weekends?***
+
+```{r}
+act.Imp$Weekend <- 0
+
+act.Imp$Weekend[which(weekdays(as.POSIXct(act.Imp$date)) == "Sunday")] <- 1
+
+act.Imp$Weekend[which(weekdays(as.POSIXct(act.Imp$date)) == "Saturday")] <- 1
+
+act.Imp2 <- aggregate(act.Imp$steps, list(time = act.Imp$interval, Weekend=act.Imp$Weekend), mean, na.rm=T)
+
+act.Imp2$Weekend <- as.factor(act.Imp2$Weekend)
+
+```
+
+```{r}
+if(!require(ggplot2)){install.packages('ggplot2')} 
+library(ggplot2)
+
+ggplot(data=act.Imp2, aes(x=time, y=x, group=Weekend, colour=Weekend)) +
+    geom_line(aes(linetype=Weekend), size=1)
+
+par(mfrow=c(2,1))
+plot(act.Imp2$x[which(act.Imp2$Weekend==0)] ~ act.Imp2$time[which(act.Imp2$Weekend==0)], type="l", main = "Weekday", xlab = "Time", ylab = "Steps")
+plot(act.Imp2$x[which(act.Imp2$Weekend==1)] ~ act.Imp2$time[which(act.Imp2$Weekend==1)], type="l", main = "Weekend", xlab = "Time", ylab = "Steps")
+
+
+```
